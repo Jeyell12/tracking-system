@@ -1,0 +1,147 @@
+<?php
+
+namespace App\Filament\Resources\VehicleResource\Pages;
+
+use App\Filament\Resources\VehicleResource;
+use App\Models\MaintenanceRequest;
+use Filament\Actions;
+use Filament\Actions\Action;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ViewRecord;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
+use Illuminate\Support\Facades\Auth;
+
+class ViewVehicle extends ViewRecord
+{
+    protected static string $resource = VehicleResource::class;
+
+    public function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Infolists\Components\Section::make('Vehicle Information')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('vin')
+                            ->label('VIN'),
+                        Infolists\Components\TextEntry::make('license_plate')
+                            ->label('License Plate'),
+                        Infolists\Components\TextEntry::make('make'),
+                        Infolists\Components\TextEntry::make('model'),
+                        Infolists\Components\TextEntry::make('year'),
+                        Infolists\Components\TextEntry::make('color'),
+                        Infolists\Components\TextEntry::make('vehicle_type')
+                            ->label('Type'),
+                        Infolists\Components\TextEntry::make('status')
+                            ->badge()
+                            ->color(fn(string $state): string => match ($state) {
+                                'active' => 'success',
+                                'maintenance' => 'warning',
+                                'out_of_service' => 'danger',
+                                default => 'gray',
+                            }),
+                    ])->columns(2),
+
+                Infolists\Components\Section::make('Technical Details')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('current_mileage')
+                            ->label('Current Mileage'),
+                        Infolists\Components\TextEntry::make('fuel_type')
+                            ->label('Fuel Type'),
+                        Infolists\Components\TextEntry::make('transmission_type')
+                            ->label('Transmission Type'),
+                        Infolists\Components\TextEntry::make('last_service_date')
+                            ->label('Last Service Date')
+                            ->date(),
+                        Infolists\Components\TextEntry::make('next_service_due_date')
+                            ->label('Next Service Due')
+                            ->date(),
+                    ])->columns(2),
+
+                Infolists\Components\Section::make('Purchase Information')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('purchase_date')
+                            ->label('Purchase Date')
+                            ->date(),
+                        Infolists\Components\TextEntry::make('purchase_price')
+                            ->label('Purchase Price')
+                            ->money('USD'),
+                        Infolists\Components\TextEntry::make('current_value')
+                            ->label('Current Value')
+                            ->money('USD'),
+                    ])->columns(2),
+
+                Infolists\Components\Section::make('Insurance Information')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('insurance_provider')
+                            ->label('Insurance Provider'),
+                        Infolists\Components\TextEntry::make('insurance_policy_number')
+                            ->label('Policy Number'),
+                        Infolists\Components\TextEntry::make('insurance_expiry_date')
+                            ->label('Expiry Date')
+                            ->date(),
+                    ])->columns(2),
+
+                Infolists\Components\Section::make('Additional Information')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('notes')
+                            ->label('Notes')
+                            ->columnSpanFull(),
+                    ]),
+            ]);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\Action::make('edit')
+                ->url(fn() => VehicleResource::getUrl('edit', ['record' => $this->record]))
+                ->icon('heroicon-o-pencil-square'),
+            Action::make('requestMaintenance')
+                ->label('Request Maintenance')
+                ->icon('heroicon-o-wrench-screwdriver')
+                ->form([
+                    Forms\Components\Select::make('maintenance_type')
+                        ->label('Maintenance Type')
+                        ->options(MaintenanceRequest::getMaintenanceTypes())
+                        ->required(),
+                    Forms\Components\Textarea::make('description')
+                        ->label('Description')
+                        ->required()
+                        ->minLength(10)
+                        ->maxLength(1000),
+                ])
+                ->action(function (array $data): void {
+                    if ($this->record->status === 'maintenance') {
+                        Notification::make()
+                            ->title('Vehicle is already in maintenance')
+                            ->danger()
+                            ->send();
+                        return;
+                    }
+
+                    MaintenanceRequest::create([
+                        'vehicle_id' => $this->record->id,
+                        'user_id' => Auth::id(),
+                        'maintenance_type' => $data['maintenance_type'],
+                        'description' => $data['description'],
+                        'status' => 'pending',
+                        'requested_at' => now(),
+                    ]);
+
+                    Notification::make()
+                        ->title('Maintenance request submitted successfully')
+                        ->success()
+                        ->send();
+                })
+                ->visible(fn() => $this->record->status !== 'maintenance'),
+            Action::make('viewMaintenanceHistory')
+                ->label('View Maintenance History')
+                ->icon('heroicon-o-clock')
+                ->url(fn() => route('filament.admin.resources.maintenance-requests.index', ['tableFilters[vehicle_id]' => $this->record->id]))
+                ->openUrlInNewTab(),
+        ];
+    }
+}

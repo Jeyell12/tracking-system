@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Vehicle extends Model
 {
@@ -43,4 +44,14 @@ class Vehicle extends Model
         'current_value' => 'decimal:2',
         'insurance_expiry_date' => 'date',
     ];
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(VehicleBrand::class, 'make', 'name');
+    }
+
+    public function model(): BelongsTo
+    {
+        return $this->belongsTo(VehicleModel::class, 'model', 'name');
+    }
 }

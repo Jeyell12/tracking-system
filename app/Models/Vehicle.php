@@ -54,4 +54,12 @@ class Vehicle extends Model
     {
         return $this->belongsTo(VehicleModel::class, 'model', 'name');
     }
+
+    /**
+     * Get all maintenance requests for the vehicle.
+     */
+    public function maintenanceRequests()
+    {
+        return $this->hasMany(MaintenanceRequest::class, 'vehicle_id');
+    }
 }

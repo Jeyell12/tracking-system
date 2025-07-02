@@ -140,8 +140,28 @@ class ViewVehicle extends ViewRecord
             Action::make('viewMaintenanceHistory')
                 ->label('View Maintenance History')
                 ->icon('heroicon-o-clock')
-                ->url(fn() => route('filament.admin.resources.maintenance-requests.index', ['tableFilters[vehicle_id]' => $this->record->id]))
-                ->openUrlInNewTab(),
+                ->modalHeading('Maintenance History')
+                ->modalSubmitActionLabel('Close')
+                ->modalCancelAction(false)
+                ->modalContent(function () {
+                    if (!$this->record->maintenanceRequests()->exists()) {
+                        return view('filament.components.no-maintenance-history');
+                    }
+
+                    $maintenanceRequests = $this->record->maintenanceRequests()
+                        ->with(['requester', 'vehicle'])
+                        ->latest('requested_at')
+                        ->limit(5)
+                        ->get();
+
+                    return view('filament.components.maintenance-history-modal', [
+                        'maintenanceRequests' => $maintenanceRequests,
+                        'vehicleId' => $this->record->id
+                    ]);
+                })
+                ->action(function () {
+                    // This is intentionally left empty as we're using the modal content
+                }),
         ];
     }
 }

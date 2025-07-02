@@ -13,3 +13,7 @@ Route::view('profile', 'profile')
     ->name('profile');
 
 require __DIR__ . '/auth.php';
+
+// Public vehicle routes
+Route::get('/vehicles/{vehicle}', [\App\Http\Controllers\PublicVehicleController::class, 'show'])
+    ->name('vehicles.public.show');

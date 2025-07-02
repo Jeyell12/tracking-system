@@ -12,6 +12,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Filament\Tables\Columns\QRCodeColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Actions\Action;
@@ -146,6 +147,19 @@ class VehicleResource extends Resource
     {
         return $table
             ->columns([
+                QRCodeColumn::make('qr_code')
+                    ->label('QR Code')
+                    ->size(300) // Increased size for better scanning
+                    ->margin(10) // Add margin around the QR code
+                    ->color('#000000') // Pure black for better contrast
+                    ->bgColor('#FFFFFF') // Pure white background
+                    ->errorCorrectionLevel('H') // Higher error correction
+                    ->text(fn ($record) => route('vehicles.public.show', ['vehicle' => $record, 'qr' => true]))
+                    ->viewMode('button')
+                    ->searchable(false)
+                    ->sortable(false)
+                    ->extraAttributes(['class' => 'cursor-default'])
+                    ->disableClick(),
                 Tables\Columns\TextColumn::make('vin')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('license_plate')

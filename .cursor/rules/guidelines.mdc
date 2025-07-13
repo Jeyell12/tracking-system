@@ -1,7 +1,0 @@
----
-description:
-globs:
-alwaysApply: false
----
-- uses Laravel, Livewire, Filament V3, and Sqlite for Database.
-- use PHP enums instead of exporting from the model itself

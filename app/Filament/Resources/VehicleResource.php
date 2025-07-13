@@ -123,22 +123,80 @@ class VehicleResource extends Resource
                     ])
                     ->required(),
                 Forms\Components\TextInput::make('current_mileage')
-                    ->numeric(),
+                    ->numeric()
+                    ->live(),
                 Forms\Components\TextInput::make('fuel_type'),
                 Forms\Components\TextInput::make('transmission_type'),
-                Forms\Components\DatePicker::make('last_service_date'),
-                Forms\Components\DatePicker::make('next_service_due_date'),
-                Forms\Components\DatePicker::make('purchase_date'),
-                Forms\Components\TextInput::make('purchase_price')
+                Forms\Components\Grid::make(2)
+                    ->schema([
+                        Forms\Components\DatePicker::make('last_service_date')
+                            ->label('Last PMS')
+                            ->live()
+                            ->afterStateUpdated(function ($state, Forms\Set $set, $get) {
+                                if ($state) {
+                                    // Set next service date to 4 months later
+                                    $nextServiceDate = \Carbon\Carbon::parse($state)->addMonths(4)->format('Y-m-d');
+                                    $set('next_service_due_date', $nextServiceDate);
+                                    
+                                    // Set odometer_during_last_service to current_mileage if not already set
+                                    $currentMileage = $get('current_mileage');
+                                    if ($currentMileage && !$get('odometer_during_last_service')) {
+                                        $set('odometer_during_last_service', $currentMileage);
+                                    }
+                                    
+                                    // Update estimated next service odometer if last odometer is set
+                                    $lastOdometer = $get('odometer_during_last_service');
+                                    if ($lastOdometer && !$get('estimated_next_service_odometer')) {
+                                        $set('estimated_next_service_odometer', intval($lastOdometer) + 10000);
+                                    }
+                                }
+                            }),
+                        Forms\Components\TextInput::make('odometer_during_last_service')
+                            ->label('Odometer During Last Service')
+                            ->numeric()
+                            ->live()
+                            ->afterStateUpdated(function ($state, Forms\Set $set, $get) {
+                                if ($state) {
+                                    // Update estimated next service odometer when last odometer changes
+                                    $set('estimated_next_service_odometer', intval($state) + 10000);
+                                }
+                            })
+                            ->disabled(fn (string $operation): bool => $operation === 'view')
+                            ->dehydrated(fn ($state) => filled($state))
+                            ->helperText('Auto-filled when last service date is selected'),
+                    ]),
+                Forms\Components\DatePicker::make('next_service_due_date')
+                    ->label('Next PMS'),
+                Forms\Components\TextInput::make('estimated_next_service_odometer')
+                    ->label('Estimated Odometer for Next Service')
                     ->numeric()
-                    ->prefix('$'),
-                Forms\Components\TextInput::make('current_value')
-                    ->numeric()
-                    ->prefix('$'),
+                    ->disabled(fn (string $operation): bool => $operation === 'view')
+                    ->dehydrated(fn ($state) => filled($state))
+                    ->helperText('Auto-calculated as Last Odometer + 10,000 km'),
                 Forms\Components\TextInput::make('insurance_provider'),
                 Forms\Components\TextInput::make('insurance_policy_number'),
                 Forms\Components\DatePicker::make('insurance_expiry_date'),
+                
+                // Registration Renewal Section
+                Forms\Components\Section::make('Registration Renewal')
+                    ->schema([
+                        Forms\Components\DatePicker::make('last_registration_renewal')
+                            ->label('Last Registration Renewal')
+                            ->native(false)
+                            ->displayFormat('M d, Y'),
+                        Forms\Components\DatePicker::make('next_registration_renewal')
+                            ->label('Next Registration Renewal')
+                            ->native(false)
+                            ->displayFormat('M d, Y'),
+                        Forms\Components\TextInput::make('renewal_fee')
+                            ->label('Renewal Fee')
+                            ->numeric()
+                            ->prefix('₱'),
+                    ])
+                    ->columns(3),
+                
                 Forms\Components\Textarea::make('notes')
+                    ->label('Remarks')
                     ->rows(2),
             ]);
     }
@@ -186,23 +244,35 @@ class VehicleResource extends Resource
                 Tables\Columns\TextColumn::make('transmission_type')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('last_service_date')
+                    ->label('Last PMS')
                     ->date()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('next_service_due_date')
+                    ->label('Next PMS')
                     ->date()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('purchase_date')
-                    ->date(),
-                Tables\Columns\TextColumn::make('purchase_price')
-                    ->money('usd'),
-                Tables\Columns\TextColumn::make('current_value')
-                    ->money('usd'),
-                Tables\Columns\TextColumn::make('insurance_provider'),
+Tables\Columns\TextColumn::make('insurance_provider'),
                 Tables\Columns\TextColumn::make('insurance_policy_number'),
                 Tables\Columns\TextColumn::make('insurance_expiry_date')
                     ->date()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('last_registration_renewal')
+                    ->label('Last Reg. Renewal')
+                    ->date()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('next_registration_renewal')
+                    ->label('Next Reg. Renewal')
+                    ->date()
+                    ->sortable()
+                    ->color(fn ($record) => 
+                        $record->next_registration_renewal && 
+                        $record->next_registration_renewal->isPast() ? 'danger' : 'success'
+                    ),
+                Tables\Columns\TextColumn::make('renewal_fee')
+                    ->label('Renewal Fee')
+                    ->formatStateUsing(fn ($state) => $state ? '₱' . number_format($state, 2) : ''),
                 Tables\Columns\TextColumn::make('notes')
+                    ->label('Remarks')
                     ->limit(20),
             ])
             ->defaultSort('year', 'desc')

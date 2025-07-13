@@ -53,24 +53,11 @@ class ViewVehicle extends ViewRecord
                         Infolists\Components\TextEntry::make('transmission_type')
                             ->label('Transmission Type'),
                         Infolists\Components\TextEntry::make('last_service_date')
-                            ->label('Last Service Date')
+                            ->label('Last PMS')
                             ->date(),
                         Infolists\Components\TextEntry::make('next_service_due_date')
-                            ->label('Next Service Due')
+                            ->label('Next PMS')
                             ->date(),
-                    ])->columns(2),
-
-                Infolists\Components\Section::make('Purchase Information')
-                    ->schema([
-                        Infolists\Components\TextEntry::make('purchase_date')
-                            ->label('Purchase Date')
-                            ->date(),
-                        Infolists\Components\TextEntry::make('purchase_price')
-                            ->label('Purchase Price')
-                            ->money('USD'),
-                        Infolists\Components\TextEntry::make('current_value')
-                            ->label('Current Value')
-                            ->money('USD'),
                     ])->columns(2),
 
                 Infolists\Components\Section::make('Insurance Information')
@@ -84,10 +71,24 @@ class ViewVehicle extends ViewRecord
                             ->date(),
                     ])->columns(2),
 
+                Infolists\Components\Section::make('Registration Renewal')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('last_registration_renewal')
+                            ->label('Last Registration Renewal')
+                            ->date(),
+                        Infolists\Components\TextEntry::make('next_registration_renewal')
+                            ->label('Next Registration Renewal')
+                            ->date()
+                            ->color(fn ($state) => $state && $state->isPast() ? 'danger' : 'success'),
+                        Infolists\Components\TextEntry::make('renewal_fee')
+                            ->label('Renewal Fee')
+                            ->formatStateUsing(fn ($state) => $state ? '₱' . number_format($state, 2) : ''),
+                    ])->columns(3),
+
                 Infolists\Components\Section::make('Additional Information')
                     ->schema([
                         Infolists\Components\TextEntry::make('notes')
-                            ->label('Notes')
+                            ->label('Remarks')
                             ->columnSpanFull(),
                     ]),
             ]);
